@@ -3,11 +3,7 @@
 # SPDX-FileType: OTHER
 # SPDX-FileCopyrightText: (c) 2021-2022, The Raetro authors and contributors
 ################################################################################
-name: Release (Single SDRAM for sockit)
-################################################################################
-# How to create a tag to launch the workflow
-# git tag 20221231
-# git push origin --tags
+name: Test Build (Single SDRAM for sockit)
 ################################################################################
 on:
   push:
@@ -21,8 +17,6 @@ jobs:
   synthesis:
     runs-on: ubuntu-latest
     container: raetro/quartus:17.0
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       # 1 - Checkout repository
       - name: Checkout repository
@@ -33,20 +27,16 @@ jobs:
       # 3 - Get current version for tagging binary
       - name: Get the version
         id: version
-        #run: echo ::set-output name=version::${GITHUB_REF#refs/tags/} # Get the version from the tag
         run: echo "::set-output name=version::$(date +'%Y%m%d')"
-      # 4 - Create tag with version and SHA256 checksum
-      - name: Copy, tag with version and create SHA256 checksum
+      # 4 - Copy Artifacts
+      - name: Create a copy and tag with version
         run: |
-          mkdir -p releases
-          cp output_files/${{ env.TARGET }}.rbf releases/${{ env.TARGET }}_${{ steps.version.outputs.version }}.rbf
-          ( cd output_files && sha256sum ${{ env.TARGET }}.rbf > ../releases/${{ env.TARGET }}_${{ steps.version.outputs.version }}.rbf.sha256 )
-          
-      # 5 - Create a new GitHub release and upload the distribution artifacts
-      - name: Create a new GitHub release
-        uses: softprops/action-gh-release@v0.1.14
-        if: startsWith(github.ref, 'refs/tags/')
+          mkdir -p release
+          cp output_files/${{ env.TARGET }}.rbf release/${{ env.TARGET }}_${{ steps.version.outputs.version }}.rbf
+          cp output_files/${{ env.TARGET }}.fit.summary release/${{ env.TARGET }}.fit_${{ steps.version.outputs.version }}.txt
+      # 5 - Upload artifacts
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
         with:
-          files: |
-            releases/${{ env.TARGET }}_${{ steps.version.outputs.version }}.rbf
-            releases/${{ env.TARGET }}_${{ steps.version.outputs.version }}.rbf.sha256
+          name: ${{ env.TARGET }}_${{ steps.version.outputs.version }}
+          path: release/
